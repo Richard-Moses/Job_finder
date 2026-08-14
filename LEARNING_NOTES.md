@@ -331,3 +331,93 @@ speculatively:
 None of these are hard to add later if the audience or usage pattern
 changes — they just weren't worth building for a problem that doesn't
 exist yet.
+
+---
+
+# Part 3: What broke after going live (and what that teaches)
+
+Everything in Part 2 was verified before shipping — live-tested against
+real sites, real bugs found and fixed. It still wasn't enough. A few more
+things only showed up once an actual person, on an actual phone, started
+actually using the deployed app. That gap is worth its own notes.
+
+## 17. A bug only a real user could find: dailyremote.com blocking Netlify's IP
+
+DailyRemote's scraper was live-tested extensively before shipping — and it
+worked. It broke the first time it was clicked from the actual deployed
+site. The difference wasn't the code, it was *where the request came
+from*: local testing (even calling the deployed function's own code
+directly) still ran from a home internet connection. Once real traffic hit
+the function running on Netlify's actual infrastructure, dailyremote.com
+started returning 403 — it blocks requests from datacenter/cloud IP
+ranges, a common anti-bot measure that has nothing to do with the request's
+content or headers.
+
+**Lesson:** testing a serverless function by importing and calling its
+handler locally verifies the *logic*, not the *environment* it will
+actually run in. Some classes of bug (IP-based blocking, geographic
+restrictions, egress firewall rules) only exist at the network layer and
+are invisible until traffic actually originates from the real deployment
+target.
+
+The fix — routing the fetch through Firecrawl's cheap "basic" proxy tier
+instead of a direct request — also had a side effect worth noting: it
+silently turned DailyRemote from "free" into "costs ~1 credit/page." A
+constraint discovered after shipping changed the cost model, not just the
+code, and the UI's own cost messaging had to be corrected to match reality.
+
+## 18. Renaming a live service is not one edit, it's three systems
+
+A QR code pointing at the app's default `netlify.app` URL got flagged as a
+"dangerous site" by a phone's security scanner. Cause: auto-generated
+Netlify subdomains (random word pairs + a hash) look exactly like the
+throwaway URLs phishing sites use on free hosting — some scanners flag
+that *pattern* by itself, regardless of actual content. The fix — renaming
+the project to something clear and readable — should have been a single
+settings change. It touched three separate systems instead, each of which
+failed independently before the whole thing worked again:
+
+1. **The host's own DNS.** The instant the project was renamed, the old
+   `netlify.app` URL stopped resolving (404) — no grace period.
+2. **A third party's whitelist.** Google's OAuth "authorized redirect
+   URIs" list rejected the *entire save* with a vague "domains don't
+   comply" error — not because the *new* URL was wrong, but because two
+   *other*, unrelated entries already in that list (the just-killed old
+   URL, and an earlier placeholder that was never a real site) had gone
+   dead, and Google's validation apparently checks that every listed
+   domain is live. One stale entry blocked saving a good one.
+3. **The app's own cached copy of its address.** Even after fixing the
+   redirect URI list, the app kept generating login links to the *old*
+   domain. Netlify auto-injects a `URL` environment variable with the
+   site's own address — but it's set at *build* time, not read fresh per
+   request. The rename didn't take effect inside the running app until a
+   new deploy rebuilt it with the current value.
+
+**Lesson:** "just rename it" actions are deceptive precisely because the
+one thing you changed is rarely the only thing that referenced the old
+value. Look for: things that cache their own identity (env vars baked in
+at build time), external allowlists that don't get cleaned up as old
+values die, and stale entries sitting unnoticed until an unrelated change
+suddenly makes them load-bearing.
+
+## 19. Firecrawl credits are account-level, not key-level
+
+Rotating to a dedicated, individually-revocable API key (a security
+practice — see Part 2's mention of the key having been pasted into chat
+plaintext) did not reset or add to the credit balance. All keys under one
+Firecrawl account draw from the same monthly pool; a key is a *credential*,
+not a *quota*. Easy to assume otherwise for any API structured this way
+(common pattern: named/scoped keys that are all just doors into one
+underlying billing plan), and worth checking explicitly before relying on
+"get a new key" as a way to get more usage.
+
+## 20. Where this all lives
+
+- **Code + all commit history:** github.com/Richard-Moses/Job_finder
+  (public repo)
+- **This file:** `LEARNING_NOTES.md`, same repo, tracks the project start
+  to now across all three parts above
+- **Live app:** the URL currently in `README.md`'s "Web app" section (kept
+  current there rather than duplicated here, since it can change — see
+  Part 3, #18, for exactly how disruptive an address change turned out to
+  be)

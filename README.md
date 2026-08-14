@@ -30,6 +30,8 @@ There's also a desktop GUI wrapping all the scripts (DailyRemote, HealthJobsUK, 
 
 ## Web app
 
+**Live at: https://aggnes.netlify.app** (sign-in restricted to allowlisted emails — see below)
+
 A stateless, serverless version of the same scrapers, hosted free on Netlify, gated behind Google sign-in restricted to specific email addresses (`ALLOWED_EMAILS`). Architecture note: Netlify only runs short-lived functions (~10-26s), so unlike the desktop tool there's no long background job — **the browser itself drives the scrape**, calling one function per page/job and building the Excel file client-side (ExcelJS) when done. This also means results aren't saved server-side: closing the tab mid-scrape loses that run's progress, and there's no shared history across sessions. That trade-off is intentional for a small trusted-user tool, not an oversight.
 
 ### Local development
