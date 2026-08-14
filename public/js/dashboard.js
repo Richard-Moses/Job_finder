@@ -258,12 +258,38 @@ function bandNumbersIn(grade) {
   return matches.map((m) => parseInt(m[1], 10));
 }
 
+// Salary text is free-form ("£25,272 - £27,476 Per Annum, Pro Rata",
+// "£112,782 - £129,783 p.a.", a single figure with no range, or an hourly
+// rate like "£25.83 per hour"). Every £ figure gets pulled out and treated
+// as a low/high range; hourly-rate listings are excluded rather than
+// guessed at, since converting them to an annual figure would mean
+// assuming hours/week that aren't reliably known.
+const TARGET_SALARY_LOW = 30000;
+const TARGET_SALARY_HIGH = 40000;
+
+function parseSalaryRange(salaryText) {
+  if (!salaryText) return null;
+  if (/per\s*hour|hourly|\/\s*hr\b/i.test(salaryText)) return null;
+  const numbers = [...salaryText.matchAll(/£\s*([\d,]+(?:\.\d+)?)/g)].map((m) =>
+    parseFloat(m[1].replace(/,/g, ""))
+  );
+  if (numbers.length === 0) return null;
+  return { low: Math.min(...numbers), high: Math.max(...numbers) };
+}
+
+function overlapsTargetSalary(salaryText) {
+  const range = parseSalaryRange(salaryText);
+  if (!range) return false;
+  return range.low <= TARGET_SALARY_HIGH && range.high >= TARGET_SALARY_LOW;
+}
+
 function matchesSponsorshipFilter(job) {
   const hasCertificate = job.certificateOfSponsorshipMentioned === true;
   const isFullTime = /full[\s-]?time/i.test(job.hours || "");
   const bands = bandNumbersIn(job.grade);
   const isTargetBand = bands.some((n) => [3, 4, 5].includes(n));
-  return hasCertificate && isFullTime && isTargetBand;
+  const isTargetSalary = overlapsTargetSalary(job.salary);
+  return hasCertificate && isFullTime && isTargetBand && isTargetSalary;
 }
 
 function updateFilteredCount() {
@@ -275,14 +301,14 @@ function updateFilteredCount() {
     return;
   }
   const matchCount = state.healthjobsuk.jobs.filter(matchesSponsorshipFilter).length;
-  countEl.textContent = `${matchCount} of ${state.healthjobsuk.jobs.length} jobs match: mentions "certificate of sponsorship", Full Time, Band 3/4/5.`;
+  countEl.textContent = `${matchCount} of ${state.healthjobsuk.jobs.length} jobs match: mentions "certificate of sponsorship", Full Time, Band 3/4/5, salary £${TARGET_SALARY_LOW.toLocaleString()}-£${TARGET_SALARY_HIGH.toLocaleString()}.`;
 }
 
 document.getElementById("sponsor-filtered-download").addEventListener("click", () => {
   const matches = state.healthjobsuk.jobs.filter(matchesSponsorshipFilter);
   if (!matches.length) {
     alert(
-      'No jobs currently match all three filters (mentions "certificate of sponsorship", Full Time, Band 3/4/5). Run "Add Sponsorship Info" first if you haven\'t.'
+      'No jobs currently match all four filters (mentions "certificate of sponsorship", Full Time, Band 3/4/5, salary £30,000-£40,000). Run "Add Sponsorship Info" first if you haven\'t.'
     );
     return;
   }
