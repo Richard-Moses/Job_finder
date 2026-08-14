@@ -53,15 +53,29 @@ async function fetchJSON(url, retries = 2) {
 async function runPaginatedScrape({ fetchPage, keyOf, targetCount, maxPages, logEl, delayMs }) {
   const results = [];
   const seen = new Set();
+  const MAX_CONSECUTIVE_FAILURES = 3;
+  let consecutiveFailures = 0;
 
   for (let page = 1; page <= maxPages && results.length < targetCount; page++) {
     logLine(logEl, `[page ${page}] fetching...`);
     let pageJobs;
     try {
       pageJobs = await fetchPage(page);
+      consecutiveFailures = 0;
     } catch (err) {
-      logLine(logEl, `  [error] ${err.message}`);
-      break;
+      consecutiveFailures++;
+      // A single page failing (network blip, one slow Firecrawl call that
+      // outlasted its retries) shouldn't throw away every page already
+      // collected and every page that would have followed -- skip it and
+      // keep going. Only give up if failures are piling up, which points
+      // to something actually broken rather than one bad request.
+      logLine(logEl, `  [warn] ${err.message} -- skipping this page (${consecutiveFailures}/${MAX_CONSECUTIVE_FAILURES} consecutive failures)`);
+      if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+        logLine(logEl, `  [error] ${MAX_CONSECUTIVE_FAILURES} pages in a row failed -- stopping.`);
+        break;
+      }
+      if (delayMs) await sleep(delayMs);
+      continue;
     }
     if (!pageJobs || pageJobs.length === 0) {
       logLine(logEl, "  [info] no results on this page, stopping.");
