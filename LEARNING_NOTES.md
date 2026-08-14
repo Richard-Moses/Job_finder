@@ -142,3 +142,192 @@ or truncate it in the sheet and link out to the source for the full text.
 - Different site entirely: steps 2–4 above (find the structured data, split
   fields across page types, add politeness + checkpointing) generalize to
   almost any job board or listing site.
+
+---
+
+# Part 2: Turning it into a hosted, multi-user web app
+
+The project didn't stop at one script. It grew a desktop GUI
+(`jobfinder_gui.py`), a second scraper for healthjobsuk.com, a
+visa-sponsorship classifier, a generic "paste any URL" scraper — and then,
+at the request "make me an admin dashboard with OAuth," a full pivot into a
+hosted web app several people can log into. That last step is where most of
+the interesting decisions (and bugs) were.
+
+## 9. "Admin dashboard with OAuth" wasn't actually the requirement
+
+The literal request was OAuth and an admin dashboard. But OAuth exists to
+verify *who someone is across a network* — it protects nothing on a
+single-user desktop app that only the one person using the machine can even
+open. Building it anyway would have meant solving a problem that didn't
+exist yet, while missing whatever the *real* need was.
+
+So before writing any code, the questions were: who else actually needs to
+use this, where does it need to run, does everyone need the same access
+level, which login provider. The answers reshaped the ask entirely — a
+small trusted group of family/friends, hosted for free, everyone equal
+access, Google sign-in. "Admin dashboard" turned out to mean "a
+professional-looking hosted dashboard," not literal admin/user role
+separation.
+
+**Lesson:** a feature request phrased in technical terms ("add OAuth", "add
+caching", "add a queue") is often standing in for a plainer need the
+requester hasn't fully articulated yet. Ask what problem it's solving before
+building the technical thing by name.
+
+## 10. The hosting platform picked determined the whole architecture
+
+The first plan (Flask + subprocess workers + Server-Sent Events + a small
+paid host like Render) was sound — for a platform that runs long-lived
+server processes. The user wanted free hosting via Netlify specifically.
+Netlify only runs short-lived serverless functions (~10-26 second execution
+limit) and static files. That's not a pricing-tier limitation to negotiate
+around — a scrape that takes minutes structurally cannot run inside one
+Netlify function call, at any price.
+
+The fix was to stop trying to fit the old design onto the new platform and
+instead design *for* what Netlify actually does well: the **browser drives
+the scrape**, calling one small serverless function per page/job (each call
+is one HTTP or Firecrawl request — a few seconds), accumulating results in
+memory client-side, and building the Excel file **in the browser** with a
+JS library when done. No server-side job queue, no database, no persistent
+disk — the trade-off is no shared history across browser sessions, which
+was fine for this project's scale.
+
+**Lesson:** a hosting platform isn't a neutral place to put an
+architecture — its constraints (execution time limits, statelessness,
+storage model) should shape the design, not get discovered as blockers
+after the design is already fixed. Ask "what does this platform actually
+run well?" before picking one, or be ready to redesign once you learn.
+
+## 11. Porting the same logic from Python to JavaScript
+
+Netlify Functions run Node.js, not Python, so the scraping logic was
+re-implemented in JavaScript rather than just redeployed:
+
+- `BeautifulSoup` → `cheerio` (a near 1:1 jQuery-style API for parsing HTML
+  server-side in Node — the CSS selectors barely changed).
+- `openpyxl` → `ExcelJS`, chosen specifically over the more popular
+  `xlsx`/SheetJS package because SheetJS's free tier has weak cell-styling
+  support, and this project already depends on real styling (bold header
+  fill, frozen panes, hyperlinks, and critically the fixed-row-height fix
+  from Bug #2 above) — a library swap that *looked* equivalent on paper
+  would have silently dropped formatting quality.
+- Regex patterns (the sponsorship-language classifier, the emoji-prefixed
+  badge parsing) were ported **verbatim**, character for character, rather
+  than "improved while I'm at it" — keeping the ported version's behavior
+  identical to the tested original was the goal, not a rewrite.
+
+**Lesson:** when porting logic between languages, preserve behavior
+first, improve second — and pick each replacement library on the specific
+feature you actually rely on (styling fidelity, here), not general
+popularity.
+
+## 12. Auth for a stateless app: JWT cookies, and a two-lists gotcha
+
+Serverless functions don't share memory between requests, so there's no
+server-side session store to check against (no Flask `session`
+equivalent). Identity instead lives in a **signed, httpOnly JWT cookie**,
+verified fresh on every request — the function never "remembers" a login,
+it re-proves the cookie is valid and re-checks the email every single time.
+
+The easy mistake to make here: assuming Google's OAuth consent-screen
+**"Test users"** list *is* your access control. It isn't — it only governs
+who can reach Google's consent screen while an app is unverified, caps at
+100 users, and stops being enforced at all if the app is ever published.
+The real gate is `ALLOWED_EMAILS`, checked in application code on every
+request. Both lists have to be kept in sync by hand; forgetting one after
+adding an 11th friend produces a confusing Google-side error before the
+app's own clearer error message is ever reached.
+
+**Lesson:** a third-party platform's own access list (Google's test users,
+a cloud provider's IAM group, etc.) is rarely a substitute for your
+application checking authorization itself — treat it as an outer,
+best-effort gate, not the real one.
+
+## 13. Bug found by testing, not by reading the code back: a false-positive classifier
+
+The sponsorship classifier (regex patterns matching phrases like "we offer
+visa sponsorship" or "unable to sponsor") was ported verbatim from the
+already-shipped Python version. Live-testing the ported JS function against
+a real job page — not just reading the code — surfaced a real bug: a job
+that explicitly said *"this is **not** a role that MFT **will offer**
+sponsorship for"* (i.e. **No**) got classified **Yes**, because a
+loosely-written YES pattern matched the substring "will offer sponsorship"
+without checking whether a negation like "not...that" appeared just before
+it. That's worse than the classifier's known "unclear" bucket — it's
+confidently wrong, not honestly uncertain.
+
+Since the regex had been ported unchanged, this exact bug was already
+present in the original Python script too — the port didn't introduce it,
+testing just *found* it. Fixed in both files, so the two stayed in parity.
+
+**Lesson:** porting code faithfully is about preserving *intended*
+behavior, not literally freezing bugs in place. Live-testing a port against
+real inputs (not just diffing it against the source) is what catches this
+kind of thing — a code review alone would likely have waved this regex
+through, since it reads as reasonable at a glance.
+
+## 14. Bug found by testing: a platform-limit collision
+
+A live test of the HealthJobsUK function returned a Firecrawl timeout
+error. Firecrawl's stealth-proxy rendering (needed to get past a
+Cloudflare bot-check) can occasionally take 20-30+ seconds — longer than a
+single Netlify function is allowed to run, even on paid tiers (~26s cap).
+Retrying *inside* that same function call would only risk hitting the exact
+same wall a second time. The fix instead retries from the **browser**: each
+retry is a brand-new function invocation with its own fresh time budget,
+which is the only place in this architecture where a retry is actually
+safe.
+
+**Lesson:** where you put retry logic matters as much as having it. A retry
+loop inside a resource that itself has a hard time limit doesn't add
+resilience — it just delays the same failure. Retry at the layer *outside*
+the constrained resource.
+
+## 15. Debugging a production deploy without needing the user's browser
+
+Two real deployment issues came up — a Google OAuth `redirect_uri_mismatch`
+error, and a dashboard KPI silently showing `--` instead of a number. Both
+were diagnosed the same way: instead of asking "what does your browser
+show," the exact HTTP request in question was reproduced directly with
+`curl`.
+
+- For the redirect mismatch: the function's own redirect `Location` header
+  was fetched directly, decoded, and compared byte-for-byte against what
+  was registered in Google Cloud Console — which showed the value being
+  *sent* was already correct, narrowing the problem down to "not yet
+  registered on Google's side" rather than a code bug.
+- For the missing KPI: the protected endpoint was called once
+  unauthenticated (confirming the function was deployed and responding,
+  not crashing) and once with a **hand-crafted JWT**, signed locally with
+  the same `JWT_SECRET` value that had been pasted into the production
+  environment — simulating a fully logged-in request without touching a
+  browser at all. That isolated the failure to one specific missing
+  environment variable (`FIRECRAWL_API_KEY` hadn't survived a bulk
+  `.env`-paste import) in about two commands.
+
+**Lesson:** most "it's broken in production" reports can be reproduced
+directly against the deployed URL with `curl`, often faster and more
+precisely than walking someone through their own browser's dev tools. If
+you know the signing secret, you can even simulate "as a logged-in user"
+requests yourself — a fast way to separate "auth is broken" from
+"something downstream of auth is broken."
+
+## 16. What was deliberately left out
+
+Matched to "a handful of trusted family and friends," not scaled up
+speculatively:
+
+- No database, no server-side run history — every scrape session lives and
+  dies with the browser tab.
+- No per-user rate limits or Firecrawl credit quotas — one shared pool,
+  visible on the dashboard so it's not a silent surprise, trusted to a
+  small group rather than engineered around.
+- No role-based permissions — every allowlisted email has identical access.
+- No automated test suite — the live-testing done during the build (Bugs
+  #13 and #14 above) stood in for it at this stage.
+
+None of these are hard to add later if the audience or usage pattern
+changes — they just weren't worth building for a problem that doesn't
+exist yet.

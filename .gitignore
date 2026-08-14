@@ -11,6 +11,7 @@ healthjobsuk_merged.json
 hju_listing_checkpoint.csv
 custom_jobs.xlsx
 gui_test_log.txt
+netlify_dev_log.txt
 
 # web app
 node_modules/
