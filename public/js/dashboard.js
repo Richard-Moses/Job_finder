@@ -184,7 +184,9 @@ const HJU_COLUMNS = [
   { header: "Location", key: "location", width: 24 },
   { header: "Speciality", key: "speciality", width: 35 },
   { header: "Salary", key: "salary", width: 30 },
+  { header: "Hours", key: "hours", width: 28 },
   { header: "Sponsorship", key: "sponsorship", width: 18 },
+  { header: "Cert. of Sponsorship Mentioned", key: "certificateOfSponsorshipMentioned", width: 14 },
   { header: "Sponsorship Snippet", key: "sponsorshipSnippet", width: 55 },
   { header: "Job URL", key: "jobDetailUrl", width: 50 },
 ];
@@ -219,6 +221,8 @@ document.getElementById("sponsor-run").addEventListener("click", async () => {
       mergeInto: (job, detail) => {
         job.sponsorship = detail.sponsorship;
         job.sponsorshipSnippet = detail.snippet;
+        job.hours = detail.hours;
+        job.certificateOfSponsorshipMentioned = detail.certificateOfSponsorshipMentioned;
       },
       logEl,
       delayMs: 200,
@@ -231,6 +235,7 @@ document.getElementById("sponsor-run").addEventListener("click", async () => {
   } finally {
     btn.disabled = false;
     refreshKpis();
+    updateFilteredCount();
   }
 });
 
@@ -240,6 +245,48 @@ document.getElementById("sponsor-download").addEventListener("click", () => {
     return;
   }
   buildAndDownloadExcel(state.healthjobsuk.jobs, HJU_COLUMNS, "HealthJobsUK Jobs", "healthjobsuk_jobs.xlsx", "jobDetailUrl");
+});
+
+// ---- Filtered export: certificate-of-sponsorship + Full Time + Band 3/4/5 ----
+// "Grade" comes back in varied forms ("NHS AfC: Band 6", "Band 5/6 dependant
+// on experience", a bare "6", etc.) so every band number mentioned is
+// extracted rather than assuming one fixed format -- a "Band 4/5" listing
+// should still match on either number.
+function bandNumbersIn(grade) {
+  if (!grade) return [];
+  const matches = [...grade.matchAll(/band\s*(\d+)/gi)];
+  return matches.map((m) => parseInt(m[1], 10));
+}
+
+function matchesSponsorshipFilter(job) {
+  const hasCertificate = job.certificateOfSponsorshipMentioned === true;
+  const isFullTime = /full[\s-]?time/i.test(job.hours || "");
+  const bands = bandNumbersIn(job.grade);
+  const isTargetBand = bands.some((n) => [3, 4, 5].includes(n));
+  return hasCertificate && isFullTime && isTargetBand;
+}
+
+function updateFilteredCount() {
+  const countEl = document.getElementById("sponsor-filtered-count");
+  if (!countEl) return;
+  const enriched = state.healthjobsuk.jobs.filter((j) => j.sponsorship !== undefined);
+  if (!enriched.length) {
+    countEl.textContent = "";
+    return;
+  }
+  const matchCount = state.healthjobsuk.jobs.filter(matchesSponsorshipFilter).length;
+  countEl.textContent = `${matchCount} of ${state.healthjobsuk.jobs.length} jobs match: mentions "certificate of sponsorship", Full Time, Band 3/4/5.`;
+}
+
+document.getElementById("sponsor-filtered-download").addEventListener("click", () => {
+  const matches = state.healthjobsuk.jobs.filter(matchesSponsorshipFilter);
+  if (!matches.length) {
+    alert(
+      'No jobs currently match all three filters (mentions "certificate of sponsorship", Full Time, Band 3/4/5). Run "Add Sponsorship Info" first if you haven\'t.'
+    );
+    return;
+  }
+  buildAndDownloadExcel(matches, HJU_COLUMNS, "Filtered NHS Jobs", "healthjobsuk_jobs_filtered.xlsx", "jobDetailUrl");
 });
 
 // ---- Custom URL ----

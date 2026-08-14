@@ -77,6 +77,25 @@ YES_PATTERNS = [
 
 MENTIONED_PATTERN = r"sponsor"
 
+# The "Job summary" table at the top of every detail page runs its labels
+# and values together with no separator (e.g. "...GradeNHS AfC: Band
+# 2ContractPermanentHoursFull time - 37.5 hours per week Job ref..."), so
+# contract hours are pulled with a targeted regex anchored on "Hours" and
+# the "X hours per week" pattern that consistently follows it.
+HOURS_PATTERN = r"Hours\s*(.*?\d+(?:\.\d+)?\s*hours? per week)"
+CERTIFICATE_PATTERN = r"certificate\s+of\s+sponsorship"
+
+
+def extract_hours(text):
+    if not text:
+        return ""
+    m = re.search(HOURS_PATTERN, text, flags=re.I | re.S)
+    return m.group(1).strip() if m else ""
+
+
+def mentions_certificate_of_sponsorship(text):
+    return bool(re.search(CERTIFICATE_PATTERN, text or "", flags=re.I))
+
 
 def classify_sponsorship(text):
     if not text:
@@ -138,9 +157,18 @@ def load_checkpoint():
     return done
 
 
+CHECKPOINT_FIELDS = [
+    "jobDetailUrl",
+    "sponsorship",
+    "sponsorship_snippet",
+    "hours",
+    "certificate_of_sponsorship_mentioned",
+]
+
+
 def append_checkpoint(row, write_header):
     with open(CHECKPOINT_CSV, "a", newline="", encoding="utf-8") as fh:
-        writer = csv.DictWriter(fh, fieldnames=["jobDetailUrl", "sponsorship", "sponsorship_snippet"])
+        writer = csv.DictWriter(fh, fieldnames=CHECKPOINT_FIELDS)
         if write_header:
             writer.writeheader()
         writer.writerow(row)
@@ -157,21 +185,27 @@ def main():
     for i, job in enumerate(jobs, start=1):
         url = job["jobDetailUrl"]
         if url in done:
-            job["sponsorship"] = done[url]["sponsorship"]
-            job["sponsorship_snippet"] = done[url]["sponsorship_snippet"]
+            for field in CHECKPOINT_FIELDS[1:]:
+                job[field] = done[url].get(field, "")
             continue
 
         print(f"[{i}/{total}] {job['title'][:60]!r}")
-        markdown = fetch_markdown(url)
-        sponsorship, snippet = classify_sponsorship(markdown or "")
+        markdown = fetch_markdown(url) or ""
+        sponsorship, snippet = classify_sponsorship(markdown)
+        hours = extract_hours(markdown)
+        cert_mentioned = mentions_certificate_of_sponsorship(markdown)
         print(f"  -> {sponsorship}" + (f"  ({snippet})" if snippet else ""))
 
-        job["sponsorship"] = sponsorship
-        job["sponsorship_snippet"] = snippet
-        append_checkpoint(
-            {"jobDetailUrl": url, "sponsorship": sponsorship, "sponsorship_snippet": snippet},
-            write_header,
-        )
+        row = {
+            "jobDetailUrl": url,
+            "sponsorship": sponsorship,
+            "sponsorship_snippet": snippet,
+            "hours": hours,
+            "certificate_of_sponsorship_mentioned": cert_mentioned,
+        }
+        for field in CHECKPOINT_FIELDS[1:]:
+            job[field] = row[field]
+        append_checkpoint(row, write_header)
         write_header = False
         time.sleep(DELAY)
 

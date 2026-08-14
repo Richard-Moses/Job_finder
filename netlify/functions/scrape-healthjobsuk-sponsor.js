@@ -34,6 +34,23 @@ const YES_PATTERNS = [
   /we\s+(?:are\s+a\s+)?(?:licensed|approved)\s+sponsor/,
 ];
 
+// The "Job summary" table at the top of every detail page runs its labels
+// and values together with no separator in the scraped text (e.g.
+// "...GradeNHS AfC: Band 2ContractPermanentHoursFull time - 37.5 hours per
+// week Job ref..."), so contract hours are pulled out with a targeted
+// regex anchored on the "Hours" label and the "X hours per week" pattern
+// that consistently follows it, rather than trying to parse the whole
+// table.
+function extractHours(text) {
+  if (!text) return "";
+  const m = text.match(/Hours\s*([^]*?\d+(?:\.\d+)?\s*hours? per week)/i);
+  return m ? m[1].trim() : "";
+}
+
+function mentionsCertificateOfSponsorship(text) {
+  return /certificate\s+of\s+sponsorship/i.test(text || "");
+}
+
 function classifySponsorship(text) {
   if (!text) return { sponsorship: "Not mentioned", snippet: "" };
   const lowered = text.toLowerCase();
@@ -96,6 +113,8 @@ exports.handler = async (event) => {
   try {
     const markdown = await firecrawlMarkdown(url, apiKey);
     const result = classifySponsorship(markdown);
+    result.hours = extractHours(markdown);
+    result.certificateOfSponsorshipMentioned = mentionsCertificateOfSponsorship(markdown);
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },

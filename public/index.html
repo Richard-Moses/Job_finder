@@ -129,7 +129,7 @@
         <div class="card">
           <div class="btn-row">
             <button class="btn btn-primary" id="sponsor-run">Add Sponsorship Info</button>
-            <button class="btn btn-ghost" id="sponsor-download">Download Excel</button>
+            <button class="btn btn-ghost" id="sponsor-download">Download Excel (all)</button>
             <span class="status-badge" id="sponsor-status">IDLE</span>
           </div>
         </div>
@@ -137,6 +137,18 @@
         <div class="card">
           <div class="log-label">LIVE OUTPUT</div>
           <div class="log-box" id="sponsor-log"></div>
+        </div>
+
+        <div class="card">
+          <div class="log-label">FILTERED EXPORT</div>
+          <p class="desc" style="margin-bottom: 8px">
+            Only jobs where the advert mentions <strong>"certificate of sponsorship"</strong>,
+            is <strong>Full Time</strong>, and grade is <strong>Band 3, 4, or 5</strong>.
+          </p>
+          <div class="btn-row">
+            <button class="btn btn-primary" id="sponsor-filtered-download">Download Filtered Excel</button>
+          </div>
+          <p class="desc" id="sponsor-filtered-count" style="margin-top: 8px"></p>
         </div>
       </section>
 
