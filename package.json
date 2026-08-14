@@ -1,0 +1,18 @@
+{
+  "name": "jobfinder-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Hosted multi-user dashboard for the JobFinder scrapers (Netlify Functions + static frontend).",
+  "scripts": {
+    "dev": "netlify dev"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "exceljs": "^4.4.0",
+    "google-auth-library": "^9.14.1",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.38.0"
+  }
+}

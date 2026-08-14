@@ -1,0 +1,328 @@
+:root {
+  --bg: #0f1420;
+  --sidebar: #131a2b;
+  --card: #161e33;
+  --card-border: #232d47;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --text-main: #e6e9f0;
+  --text-muted: #8b94ab;
+  --good: #22c55e;
+  --warn: #f59e0b;
+  --bad: #ef4444;
+  --log-bg: #0a0e18;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text-main);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+/* ---------- login page ---------- */
+
+.login-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-card {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 40px;
+  width: 340px;
+  text-align: center;
+}
+
+.login-card h1 {
+  font-size: 22px;
+  margin: 0 0 4px;
+}
+
+.login-card p {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin: 0 0 24px;
+}
+
+.google-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 16px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.google-btn:hover {
+  background: var(--accent-hover);
+}
+
+.error-box {
+  margin-top: 16px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--bad);
+  font-size: 13px;
+}
+
+/* ---------- app shell ---------- */
+
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  background: var(--sidebar);
+  padding: 24px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.brand {
+  padding: 0 22px 26px;
+}
+
+.brand .name {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.brand .tag {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.nav-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  padding: 10px 22px;
+  cursor: pointer;
+  border-radius: 0;
+}
+
+.nav-btn:hover {
+  background: var(--card);
+  color: var(--text-main);
+}
+
+.nav-btn.active {
+  background: var(--card);
+  color: var(--text-main);
+  border-left: 3px solid var(--accent);
+  padding-left: 19px;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 16px 22px 0;
+  border-top: 1px solid var(--card-border);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.sidebar-footer a {
+  color: var(--text-muted);
+}
+
+.content {
+  flex: 1;
+  padding: 28px 32px;
+  max-width: 920px;
+}
+
+.page {
+  display: none;
+}
+
+.page.active {
+  display: block;
+}
+
+.page h2 {
+  font-size: 20px;
+  margin: 0 0 4px;
+}
+
+.page .desc {
+  color: var(--text-muted);
+  font-size: 13px;
+  max-width: 720px;
+  margin: 0 0 6px;
+}
+
+.cost-note {
+  color: var(--warn);
+  font-size: 12px;
+  font-weight: 600;
+  margin: 2px 0 14px;
+}
+
+/* ---------- cards ---------- */
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-bottom: 14px;
+}
+
+.field-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0;
+}
+
+.field-row label {
+  width: 180px;
+  color: var(--text-muted);
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.field-row input {
+  flex: 1;
+  max-width: 300px;
+  background: var(--bg);
+  border: 1px solid var(--card-border);
+  color: var(--text-main);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 13px;
+}
+
+.btn-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.btn {
+  border: none;
+  border-radius: 8px;
+  padding: 9px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--card-border);
+  color: var(--text-main);
+}
+
+.btn-ghost:hover {
+  background: var(--card-border);
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #0f1420;
+  background: var(--text-muted);
+}
+
+.status-badge.running {
+  background: var(--warn);
+}
+
+.status-badge.done {
+  background: var(--good);
+}
+
+.status-badge.failed {
+  background: var(--bad);
+}
+
+.log-label {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin: 0 0 6px;
+}
+
+.log-box {
+  background: var(--log-bg);
+  border-radius: 6px;
+  padding: 12px 14px;
+  font-family: Consolas, monospace;
+  font-size: 12px;
+  color: #9fe3a0;
+  height: 260px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
+
+/* ---------- KPI cards ---------- */
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.kpi-card {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.kpi-card .label {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.kpi-card .value {
+  font-size: 22px;
+  font-weight: 700;
+  margin-top: 4px;
+}

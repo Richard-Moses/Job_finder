@@ -1,0 +1,26 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+[[redirects]]
+  from = "/auth/login"
+  to = "/.netlify/functions/auth-login"
+  status = 200
+
+[[redirects]]
+  from = "/auth/callback"
+  to = "/.netlify/functions/auth-callback"
+  status = 200
+
+[[redirects]]
+  from = "/auth/logout"
+  to = "/.netlify/functions/auth-logout"
+  status = 200
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200

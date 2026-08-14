@@ -1,5 +1,17 @@
 __pycache__/
 *.pyc
 jobs_checkpoint.csv
+sponsorship_checkpoint.csv
+sponsorship_log.txt
+scrape_log*.txt
 ~$*.xlsx
 .claude/
+.env
+healthjobsuk_merged.json
+hju_listing_checkpoint.csv
+custom_jobs.xlsx
+gui_test_log.txt
+
+# web app
+node_modules/
+.netlify/

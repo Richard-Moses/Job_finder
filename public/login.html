@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JobFinder — Sign in</title>
+  <link rel="stylesheet" href="/css/app.css" />
+</head>
+<body>
+  <div class="login-shell">
+    <div class="login-card">
+      <h1>JobFinder</h1>
+      <p>Job scraping console — sign in to continue.</p>
+      <a class="google-btn" href="/auth/login">Sign in with Google</a>
+      <div id="error" class="error-box" style="display:none"></div>
+    </div>
+  </div>
+  <script>
+    const params = new URLSearchParams(location.search);
+    if (params.get("error")) {
+      const box = document.getElementById("error");
+      box.style.display = "block";
+      box.textContent = "That Google account isn't authorized for JobFinder. Ask the site owner to add it.";
+    }
+  </script>
+</body>
+</html>

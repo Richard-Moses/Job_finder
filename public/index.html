@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JobFinder</title>
+  <link rel="stylesheet" href="/css/app.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <div class="sidebar">
+      <div class="brand">
+        <div class="name">JobFinder</div>
+        <div class="tag">Job scraping console</div>
+      </div>
+      <button class="nav-btn active" data-page="overview">Overview</button>
+      <button class="nav-btn" data-page="dailyremote">DailyRemote</button>
+      <button class="nav-btn" data-page="healthjobsuk">HealthJobsUK</button>
+      <button class="nav-btn" data-page="sponsorship">Sponsorship</button>
+      <button class="nav-btn" data-page="custom">Custom URL</button>
+      <div class="sidebar-footer">
+        <div id="user-email">…</div>
+        <a href="/auth/logout">Sign out</a>
+      </div>
+    </div>
+
+    <div class="content">
+      <!-- Overview -->
+      <section class="page active" id="page-overview">
+        <h2>Overview</h2>
+        <p class="desc">
+          Each scrape runs in your browser session — results aren't saved on a server, so
+          nothing persists if you close this tab mid-run. Download the Excel file when a
+          scrape finishes to keep it.
+        </p>
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="label">Firecrawl credits left</div>
+            <div class="value" id="kpi-credits">--</div>
+          </div>
+          <div class="kpi-card">
+            <div class="label">Jobs in this session (HealthJobsUK)</div>
+            <div class="value" id="kpi-hju-count">0</div>
+          </div>
+          <div class="kpi-card">
+            <div class="label">Jobs in this session (DailyRemote)</div>
+            <div class="value" id="kpi-dr-count">0</div>
+          </div>
+        </div>
+        <button class="btn btn-ghost" id="refresh-kpis">Refresh</button>
+      </section>
+
+      <!-- DailyRemote -->
+      <section class="page" id="page-dailyremote">
+        <h2>DailyRemote</h2>
+        <p class="desc">
+          Scrapes the newest remote job listings from dailyremote.com. No Firecrawl credits
+          used — this site is scraped directly.
+        </p>
+        <div class="cost-note">Free to run as often as you like.</div>
+
+        <div class="card">
+          <div class="field-row">
+            <label>Number of jobs</label>
+            <input type="number" id="dr-target" value="50" min="1" max="1000" />
+          </div>
+          <div class="field-row">
+            <label>Search keyword (optional)</label>
+            <input type="text" id="dr-search" placeholder="" />
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" id="dr-run">Scrape DailyRemote</button>
+            <button class="btn btn-ghost" id="dr-download">Download Excel</button>
+            <span class="status-badge" id="dr-status">IDLE</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="log-label">LIVE OUTPUT</div>
+          <div class="log-box" id="dr-log"></div>
+        </div>
+      </section>
+
+      <!-- HealthJobsUK -->
+      <section class="page" id="page-healthjobsuk">
+        <h2>HealthJobsUK</h2>
+        <p class="desc">
+          Scrapes NHS/health job listings from healthjobsuk.com. This site sits behind a
+          Cloudflare bot-check, so it's fetched through Firecrawl.
+        </p>
+        <div class="cost-note">Uses Firecrawl credits: ~9 credits per page of ~50 jobs.</div>
+
+        <div class="card">
+          <div class="field-row">
+            <label>Number of jobs</label>
+            <input type="number" id="hju-target" value="50" min="1" max="2000" />
+          </div>
+          <div class="field-row">
+            <label>Category</label>
+            <input type="text" id="hju-category" value="Nursing_and_Midwifery" />
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" id="hju-run">Scrape HealthJobsUK</button>
+            <button class="btn btn-ghost" id="hju-download">Download Excel</button>
+            <span class="status-badge" id="hju-status">IDLE</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="log-label">LIVE OUTPUT</div>
+          <div class="log-box" id="hju-log"></div>
+        </div>
+      </section>
+
+      <!-- Sponsorship -->
+      <section class="page" id="page-sponsorship">
+        <h2>HealthJobsUK — Add Sponsorship Info</h2>
+        <p class="desc">
+          Best-effort read of visa-sponsorship language on each HealthJobsUK job already
+          scraped in this session's memory (there's no structured field for it on the site).
+          Run "HealthJobsUK" first.
+        </p>
+        <div class="cost-note">Uses Firecrawl credits: ~5 credits per job.</div>
+
+        <div class="card">
+          <div class="btn-row">
+            <button class="btn btn-primary" id="sponsor-run">Add Sponsorship Info</button>
+            <button class="btn btn-ghost" id="sponsor-download">Download Excel</button>
+            <span class="status-badge" id="sponsor-status">IDLE</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="log-label">LIVE OUTPUT</div>
+          <div class="log-box" id="sponsor-log"></div>
+        </div>
+      </section>
+
+      <!-- Custom URL -->
+      <section class="page" id="page-custom">
+        <h2>Custom URL</h2>
+        <p class="desc">
+          Paste any job listings page. Uses Firecrawl's structured extraction, which adapts to
+          different site layouts — but pagination is NOT auto-detected. Tell it the
+          query-parameter name your target site uses for page numbers (e.g. "page", "_pg", "p").
+          If that's wrong, page 2 comes back empty and it stops rather than wasting credits.
+        </p>
+        <div class="cost-note">Uses Firecrawl credits: ~9 credits per page.</div>
+
+        <div class="card">
+          <div class="field-row">
+            <label>Job listings URL</label>
+            <input type="text" id="custom-url" placeholder="https://example.com/jobs" />
+          </div>
+          <div class="field-row">
+            <label>Pages to fetch</label>
+            <input type="number" id="custom-pages" value="1" min="1" max="50" />
+          </div>
+          <div class="field-row">
+            <label>Pagination query param</label>
+            <input type="text" id="custom-pageparam" value="page" />
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" id="custom-run">Scrape URL</button>
+            <button class="btn btn-ghost" id="custom-download">Download Excel</button>
+            <span class="status-badge" id="custom-status">IDLE</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="log-label">LIVE OUTPUT</div>
+          <div class="log-box" id="custom-log"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/runner.js"></script>
+  <script src="/js/export.js"></script>
+  <script src="/js/dashboard.js"></script>
+</body>
+</html>
