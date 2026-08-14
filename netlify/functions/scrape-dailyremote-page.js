@@ -10,12 +10,9 @@
 
 const cheerio = require("cheerio");
 const { requireAuth } = require("./_auth");
+const { fetchHtmlViaFirecrawl } = require("./_fetch-html");
 
 const BASE = "https://dailyremote.com";
-const HEADERS = {
-  "User-Agent":
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
-};
 
 function parseListingPage(html) {
   const $ = cheerio.load(html);
@@ -98,6 +95,11 @@ exports.handler = async (event) => {
   const auth = requireAuth(event);
   if (!auth.ok) return auth.response;
 
+  const apiKey = process.env.FIRECRAWL_API_KEY;
+  if (!apiKey) {
+    return { statusCode: 500, body: JSON.stringify({ error: "FIRECRAWL_API_KEY is not configured." }) };
+  }
+
   const qs = event.queryStringParameters || {};
   const page = parseInt(qs.page || "1", 10) || 1;
   const search = qs.search || "";
@@ -105,11 +107,7 @@ exports.handler = async (event) => {
 
   let html;
   try {
-    const resp = await fetch(url, { headers: HEADERS });
-    if (!resp.ok) {
-      return { statusCode: 502, body: JSON.stringify({ error: `Upstream returned HTTP ${resp.status}` }) };
-    }
-    html = await resp.text();
+    html = await fetchHtmlViaFirecrawl(url, apiKey);
   } catch (err) {
     return { statusCode: 502, body: JSON.stringify({ error: err.message }) };
   }

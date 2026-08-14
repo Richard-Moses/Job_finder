@@ -54,10 +54,12 @@
       <section class="page" id="page-dailyremote">
         <h2>DailyRemote</h2>
         <p class="desc">
-          Scrapes the newest remote job listings from dailyremote.com. No Firecrawl credits
-          used — this site is scraped directly.
+          Scrapes the newest remote job listings from dailyremote.com. dailyremote.com blocks
+          requests from cloud/datacenter IPs (which is what this hosted app runs on), so pages
+          are fetched through Firecrawl's cheapest proxy tier instead — cheap, but not free like
+          it is when running the desktop version locally.
         </p>
-        <div class="cost-note">Free to run as often as you like.</div>
+        <div class="cost-note">Uses Firecrawl credits: ~1 credit per page, ~1 credit per job (for company name/description).</div>
 
         <div class="card">
           <div class="field-row">
