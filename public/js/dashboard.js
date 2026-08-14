@@ -22,15 +22,45 @@ document.querySelectorAll(".nav-btn").forEach((btn) => {
   });
 });
 
-// ---- overview KPIs ----
+// ---- overview KPIs + low-credit banner ----
+// Firecrawl credits are shared across everyone using this app (one API
+// key), and every scraper spends them now (including DailyRemote, since
+// its Netlify-vs-dailyremote.com IP-blocking fix routes through Firecrawl
+// too). This banner shows on every page, not just Overview, so it's
+// visible right before someone clicks "Run" -- not just buried on a page
+// they might not check first.
+const CREDITS_WARNING_THRESHOLD = 100;
+const CREDITS_CRITICAL_THRESHOLD = 20;
+
+function updateCreditsBanner(remaining, plan) {
+  const banner = document.getElementById("credits-banner");
+  if (remaining === null || remaining === undefined) {
+    banner.style.display = "none";
+    return;
+  }
+  if (remaining <= CREDITS_CRITICAL_THRESHOLD) {
+    banner.textContent = `⚠ Only ${remaining} Firecrawl credits left out of ${plan}. A HealthJobsUK or Custom URL scrape may not complete.`;
+    banner.className = "credits-banner critical";
+    banner.style.display = "block";
+  } else if (remaining <= CREDITS_WARNING_THRESHOLD) {
+    banner.textContent = `${remaining} Firecrawl credits left out of ${plan} — running low. Consider a smaller job count.`;
+    banner.className = "credits-banner warning";
+    banner.style.display = "block";
+  } else {
+    banner.style.display = "none";
+  }
+}
+
 async function refreshKpis() {
   document.getElementById("kpi-hju-count").textContent = state.healthjobsuk.jobs.length;
   document.getElementById("kpi-dr-count").textContent = state.dailyremote.jobs.length;
   try {
     const data = await fetchJSON("/api/firecrawl-credits");
     document.getElementById("kpi-credits").textContent = `${data.remaining} / ${data.plan}`;
+    updateCreditsBanner(data.remaining, data.plan);
   } catch (err) {
     document.getElementById("kpi-credits").textContent = "--";
+    updateCreditsBanner(null, null);
   }
 }
 document.getElementById("refresh-kpis").addEventListener("click", refreshKpis);
@@ -200,6 +230,7 @@ document.getElementById("sponsor-run").addEventListener("click", async () => {
     setStatus(badge, "FAILED");
   } finally {
     btn.disabled = false;
+    refreshKpis();
   }
 });
 
