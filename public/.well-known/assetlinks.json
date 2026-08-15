@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.aggnes.twa",
+      "sha256_cert_fingerprints": [
+        "EA:7A:5F:D4:1A:BD:39:5A:2E:1C:11:D2:EC:9C:E6:28:43:4B:D1:42:DE:79:1A:C3:A7:82:39:3F:22:DE:CA:1F"
+      ]
+    }
+  }
+]

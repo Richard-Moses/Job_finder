@@ -16,3 +16,10 @@ netlify_dev_log.txt
 # web app
 node_modules/
 .netlify/
+
+# android twa (signing key must never be committed; build output is regenerable)
+android-twa/android.keystore
+android-twa/keystore-credentials.txt
+android-twa/build/
+android-twa/app/build/
+android-twa/.gradle/
